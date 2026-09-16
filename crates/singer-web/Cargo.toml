@@ -7,12 +7,21 @@ edition.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.8", features = ["csr"] }
-wasm-bindgen = "0.2"
+gloo-net = "0.6"
+gloo-timers = { version = "0.3", features = ["futures"] }
+js-sys = "0.3"
+leptos = { version = "0.8.20", features = ["csr"] }
+serde.workspace = true
+serde_json.workspace = true
 singer-core = { path = "../singer-core" }
-singer-audio = { path = "../singer-audio" }
+wasm-bindgen = "0.2.128"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
 web-sys = { version = "0.3", features = [
-  "Window", "Navigator", "MediaDevices", "MediaStream",
-  "AudioContext", "GainNode", "DynamicsCompressorNode",
-  "MediaRecorder", "HtmlAudioElement"
+  "AnalyserNode", "AudioContext", "AudioDestinationNode", "AudioNode", "AudioParam",
+  "BiquadFilterNode", "BiquadFilterType", "Blob", "BlobEvent", "Document", "Event",
+  "EventTarget", "GainNode", "HtmlAudioElement", "HtmlElement", "KeyboardEvent", "Location",
+  "MediaDeviceInfo", "MediaDeviceKind", "MediaDevices", "MediaRecorder", "MediaStream",
+  "MediaStreamAudioDestinationNode", "MediaStreamAudioSourceNode", "MediaStreamTrack", "Navigator",
+  "DynamicsCompressorNode", "Window"
 ] }
