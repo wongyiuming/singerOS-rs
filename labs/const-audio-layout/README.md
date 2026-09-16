@@ -2,6 +2,6 @@
 
 This lab tracks rustc's current `generic_const_args` direction rather than the older `generic_const_exprs` design.
 
-It deliberately mirrors the current Unstable Book shape: a generic `type const` computes `FRAMES × CHANNELS`, and that named type-level constant becomes the array length of `AudioBlock`.
+On the 2026-09-16 moving nightly, the public-facing `min_generic_const_args` gate alone does not make the parser accept `type const`. rustc still exposes the transitional `mgca_type_const_syntax` gate for enabling that syntax before expansion, so the lab explicitly tests that compiler-internal transition layer too.
 
-This crate is outside the production workspace. If moving nightly and the Unstable Book disagree during an in-flight syntax transition, that disagreement is treated as an experiment result, never as a production blocker.
+The experiment derives an `AudioBlock` array length from `FRAMES × CHANNELS` as a generic type-level constant. The crate is outside production workspace; parser/feature churn can never block SingerOS mainline.

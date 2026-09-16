@@ -1,3 +1,4 @@
+#![feature(mgca_type_const_syntax)]
 #![feature(generic_const_items)]
 #![feature(min_generic_const_args)]
 #![feature(generic_const_args)]
