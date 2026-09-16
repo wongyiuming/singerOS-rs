@@ -1,26 +1,19 @@
-#![allow(incomplete_features)]
+#![feature(generic_const_items)]
 #![feature(min_generic_const_args)]
 #![feature(generic_const_args)]
-#![feature(generic_const_items)]
+#![expect(incomplete_features)]
 
-#[type_const]
-const SAMPLE_COUNT<const FRAMES: usize, const CHANNELS: usize>: usize =
-    core::direct_const_arg!(const { FRAMES * CHANNELS });
+type const SAMPLE_COUNT<const FRAMES: usize, const CHANNELS: usize>: usize =
+    const { FRAMES * CHANNELS };
 
 pub struct AudioBlock<const FRAMES: usize, const CHANNELS: usize> {
-    samples: [
-        f32;
-        core::direct_const_arg!(SAMPLE_COUNT::<FRAMES, CHANNELS>)
-    ],
+    samples: [f32; SAMPLE_COUNT::<FRAMES, CHANNELS>],
 }
 
 impl<const FRAMES: usize, const CHANNELS: usize> AudioBlock<FRAMES, CHANNELS> {
     pub fn silence() -> Self {
         Self {
-            samples: [
-                0.0;
-                core::direct_const_arg!(SAMPLE_COUNT::<FRAMES, CHANNELS>)
-            ],
+            samples: [0.0; SAMPLE_COUNT::<FRAMES, CHANNELS>],
         }
     }
 
