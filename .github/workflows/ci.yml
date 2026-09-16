@@ -20,46 +20,28 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          p = Path('crates/singer-web/src/audio.rs')
-          s = p.read_text()
-          s = s.replace(
-              'let Some(e) = slot.borrow().as_ref() else {\n            return 0;\n        };',
-              'let binding = slot.borrow();\n        let Some(e) = binding.as_ref() else {\n            return 0;\n        };',
-          )
-          s = s.replace(
-              'let blob = event.data();\n        if blob.size() == 0 {',
-              'let Some(blob) = event.data() else {\n            return;\n        };\n        if blob.size() == 0.0 {',
-          )
-          s = s.replace('if blob.size() == 0 {', 'if blob.size() == 0.0 {')
-          p.write_text(s)
-
           p = Path('crates/singer-web/src/lib.rs')
           s = p.read_text()
           s = s.replace(
-              'render_lyrics(catalog.get(), &selected.get(), &mode.get(), lyric_index)',
-              'render_lyrics(catalog.get(), selected.get(), mode.get(), lyric_index)',
+              'player.remove_attribute("src");',
+              'let _ = player.remove_attribute("src");',
           )
           s = s.replace(
-              'render_lyrics(catalog.get(),&selected.get(),&mode.get(),lyric_index)',
-              'render_lyrics(catalog.get(),selected.get(),mode.get(),lyric_index)',
+              'if selected.get_untracked().is_empty() {\n                if let Some(first) = list.first() {\n                    selected.set(first.id.clone());\n                }\n            }',
+              'if selected.get_untracked().is_empty()\n                && let Some(first) = list.first()\n            {\n                selected.set(first.id.clone());\n            }',
           )
-          s = s.replace('    id: &str,\n    mode: &str,', '    id: String,\n    mode: String,')
-          s = s.replace('current_song(catalog, id)', 'current_song(catalog, &id)')
-          s = s.replace('lyrics_for(&s, mode)', 'lyrics_for(&s, &mode)')
-          p.write_text(s)
-
-          p = Path('crates/singer-audio/Cargo.toml')
-          s = p.read_text()
-          s = s.replace('singer-core = { path = "../singer-core" }\n', '')
-          s = s.replace('thiserror.workspace = true\n', '')
+          start = s.index('fn lyric_text(')
+          end = s.index('fn render_lyrics(', start)
+          chunk = s[start:end].replace('current_song(catalog, &id)', 'current_song(catalog, id)')
+          s = s[:start] + chunk + s[end:]
           p.write_text(s)
           PY
           cargo fmt --all
           if ! git diff --quiet; then
             git config user.name github-actions[bot]
             git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-            git add crates
-            git commit -m "fix: finish Rust WASM compile fixes"
+            git add crates/singer-web/src/lib.rs
+            git commit -m "fix: satisfy strict parity clippy"
             git push origin HEAD:feat/production-parity
           fi
       - run: cargo fmt --all -- --check
