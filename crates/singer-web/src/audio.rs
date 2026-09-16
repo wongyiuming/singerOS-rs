@@ -342,7 +342,7 @@ pub async fn start_recording(
         let Some(blob) = event.data() else {
             return;
         };
-        if blob.size() == 0 {
+        if blob.size() == 0.0 {
             return;
         }
         let seq = data_seq.get();
