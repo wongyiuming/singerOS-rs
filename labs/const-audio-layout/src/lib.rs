@@ -3,19 +3,14 @@
 #![feature(generic_const_args)]
 #![feature(generic_const_items)]
 
-trait LayoutMath {
-    const SAMPLE_COUNT<const FRAMES: usize, const CHANNELS: usize>: usize;
-}
-
-impl LayoutMath for () {
-    const SAMPLE_COUNT<const FRAMES: usize, const CHANNELS: usize>: usize =
-        core::direct_const_arg!(const { FRAMES * CHANNELS });
-}
+#[type_const]
+const SAMPLE_COUNT<const FRAMES: usize, const CHANNELS: usize>: usize =
+    core::direct_const_arg!(const { FRAMES * CHANNELS });
 
 pub struct AudioBlock<const FRAMES: usize, const CHANNELS: usize> {
     samples: [
         f32;
-        core::direct_const_arg!(<() as LayoutMath>::SAMPLE_COUNT::<FRAMES, CHANNELS>)
+        core::direct_const_arg!(SAMPLE_COUNT::<FRAMES, CHANNELS>)
     ],
 }
 
@@ -24,7 +19,7 @@ impl<const FRAMES: usize, const CHANNELS: usize> AudioBlock<FRAMES, CHANNELS> {
         Self {
             samples: [
                 0.0;
-                core::direct_const_arg!(<() as LayoutMath>::SAMPLE_COUNT::<FRAMES, CHANNELS>)
+                core::direct_const_arg!(SAMPLE_COUNT::<FRAMES, CHANNELS>)
             ],
         }
     }
