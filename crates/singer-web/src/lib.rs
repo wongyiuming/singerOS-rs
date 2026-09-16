@@ -205,7 +205,7 @@ fn KaraokeConsole() -> impl IntoView {
                 lyric_index.set(0);
             }
         } else {
-            player.remove_attribute("src");
+            let _ = player.remove_attribute("src");
             let _ = player.remove_attribute("data-track-key");
             player.load();
         }
@@ -372,10 +372,10 @@ fn KaraokeConsole() -> impl IntoView {
 fn refresh_devices(devices: RwSignal<Vec<DeviceOption>>, selected: RwSignal<String>) {
     spawn_local(async move {
         if let Ok(list) = audio::enumerate_inputs().await {
-            if selected.get_untracked().is_empty() {
-                if let Some(first) = list.first() {
-                    selected.set(first.id.clone());
-                }
+            if selected.get_untracked().is_empty()
+                && let Some(first) = list.first()
+            {
+                selected.set(first.id.clone());
             }
             devices.set(list);
         }
@@ -417,7 +417,7 @@ fn lyrics_for(song: &KaraokeSong, mode: &str) -> (Vec<KaraokeCue>, f64) {
     (lyrics, offset)
 }
 fn lyric_text(catalog: Option<KaraokeCatalog>, id: &str, mode: &str, index: usize) -> String {
-    let Some(song) = current_song(catalog, &id) else {
+    let Some(song) = current_song(catalog, id) else {
         return "—".into();
     };
     lyrics_for(&song, mode)
