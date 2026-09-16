@@ -1,0 +1,8 @@
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "target-cpu=sandybridge"]
+
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+bulk-memory,+mutable-globals"]
+
+[net]
+git-fetch-with-cli = true

@@ -1,0 +1,18 @@
+package singeros:browser@0.1.0;
+
+interface audio {
+  record capture-config {
+    device-id: option<string>,
+    echo-cancellation: bool,
+    sample-rate: u32,
+  }
+
+  open-microphone: func(config: capture-config) -> result<u32, string>;
+  set-record-gain: func(handle: u32, milli-gain: u32);
+  close-microphone: func(handle: u32);
+}
+
+world singer-web-next {
+  import audio;
+  export run: func();
+}

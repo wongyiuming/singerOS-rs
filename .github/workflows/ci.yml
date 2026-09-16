@@ -1,0 +1,26 @@
+name: rust-future-ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  mainline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --exclude compiler-contracts --all-targets -- -D warnings
+      - run: cargo test --workspace --exclude compiler-contracts
+      - run: cargo check -p singer-web --target wasm32-unknown-unknown
+
+  compiler-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - name: Negative bounds + Polonius-next
+        run: cargo test -p compiler-contracts
+        env:
+          RUSTFLAGS: -Zinternal-testing-features -Zpolonius=next
