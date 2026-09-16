@@ -5,10 +5,10 @@ use audio::{DeviceOption, RecordingSpec};
 use gloo_timers::callback::Interval;
 use leptos::prelude::*;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use singer_core::{KaraokeCatalog, KaraokeCue, KaraokeRecording, KaraokeSong};
 use std::rc::Rc;
-use wasm_bindgen::{closure::Closure, JsCast};
+use wasm_bindgen::{JsCast, closure::Closure};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlAudioElement, KeyboardEvent};
 
@@ -30,7 +30,9 @@ struct GeneralRecording {
 
 #[component]
 fn App() -> impl IntoView {
-    let path = web_sys::window().and_then(|w| w.location().pathname().ok()).unwrap_or_default();
+    let path = web_sys::window()
+        .and_then(|w| w.location().pathname().ok())
+        .unwrap_or_default();
     let karaoke = path.contains("/karaoke");
     view! {
         <style>{STYLE}</style>
@@ -82,14 +84,23 @@ fn VoiceConsole() -> impl IntoView {
 
     let toggle_record = move |_| {
         if recording.get() {
-            if let Err(e) = audio::stop_recording() { status.set(format!("停止录音失败：{e}")); }
-            else { status.set("正在收尾并保存录音…".into()); }
+            if let Err(e) = audio::stop_recording() {
+                status.set(format!("停止录音失败：{e}"));
+            } else {
+                status.set("正在收尾并保存录音…".into());
+            }
             return;
         }
-        if !audio::is_open() { status.set("请先打开麦克风".into()); return; }
+        if !audio::is_open() {
+            status.set("请先打开麦克风".into());
+            return;
+        }
         let done: Rc<dyn Fn(Result<(), String>)> = Rc::new(move |result| {
             recording.set(false);
-            match result { Ok(()) => status.set("录音已保存".into()), Err(e) => status.set(format!("录音保存失败：{e}")) }
+            match result {
+                Ok(()) => status.set("录音已保存".into()),
+                Err(e) => status.set(format!("录音保存失败：{e}")),
+            }
             refresh_general_recordings(recordings);
         });
         let spec = RecordingSpec {
@@ -100,7 +111,11 @@ fn VoiceConsole() -> impl IntoView {
         };
         spawn_local(async move {
             match audio::start_recording(spec, done).await {
-                Ok(()) => { recording.set(true); status.set("录制中 · 仅麦克风".into()); api::telemetry("录音开始", json!({"recordBus":"mic-only"})); }
+                Ok(()) => {
+                    recording.set(true);
+                    status.set("录制中 · 仅麦克风".into());
+                    api::telemetry("录音开始", json!({"recordBus":"mic-only"}));
+                }
                 Err(e) => status.set(format!("开始录音失败：{e}")),
             }
         });
@@ -161,7 +176,9 @@ fn KaraokeConsole() -> impl IntoView {
     spawn_local(async move {
         match api::get_json::<KaraokeCatalog>("/singeros/api/karaoke/catalog").await {
             Ok(c) => {
-                if let Some(first) = c.songs.first() { selected.set(first.id.clone()); }
+                if let Some(first) = c.songs.first() {
+                    selected.set(first.id.clone());
+                }
                 status.set(format!("歌库已加载 · {} 首", c.songs.len()));
                 catalog.set(Some(c));
             }
@@ -173,8 +190,12 @@ fn KaraokeConsole() -> impl IntoView {
         let id = selected.get();
         let m = mode.get();
         let c = catalog.get();
-        let Some(song) = c.as_ref().and_then(|x| x.songs.iter().find(|s| s.id == id)) else { return; };
-        let Some(player) = song_player() else { return; };
+        let Some(song) = c.as_ref().and_then(|x| x.songs.iter().find(|s| s.id == id)) else {
+            return;
+        };
+        let Some(player) = song_player() else {
+            return;
+        };
         let key = format!("{}:{m}", song.id);
         if let Some(track) = song.tracks.get(&m) {
             if player.get_attribute("data-track-key").as_deref() != Some(&key) {
@@ -189,24 +210,42 @@ fn KaraokeConsole() -> impl IntoView {
             player.load();
         }
     });
-    Effect::new(move |_| if let Some(player)=song_player() { player.set_volume(song_gain.get() as f64 / 100.0); });
+    Effect::new(move |_| {
+        if let Some(player) = song_player() {
+            player.set_volume(song_gain.get() as f64 / 100.0);
+        }
+    });
     Interval::new(100, move || {
         meter.set(audio::meter_percent());
-        let Some(player) = song_player() else { return; };
-        let Some(song) = current_song(catalog.get_untracked(), &selected.get_untracked()) else { return; };
+        let Some(player) = song_player() else {
+            return;
+        };
+        let Some(song) = current_song(catalog.get_untracked(), &selected.get_untracked()) else {
+            return;
+        };
         let (lyrics, offset) = lyrics_for(&song, &mode.get_untracked());
-        if lyrics.is_empty() { return; }
+        if lyrics.is_empty() {
+            return;
+        }
         let t = player.current_time() - offset;
-        let idx = lyrics.iter().position(|c| t >= c.start && t < c.end)
-            .or_else(|| lyrics.iter().rposition(|c| c.start <= t)).unwrap_or(0);
+        let idx = lyrics
+            .iter()
+            .position(|c| t >= c.start && t < c.end)
+            .or_else(|| lyrics.iter().rposition(|c| c.start <= t))
+            .unwrap_or(0);
         lyric_index.set(idx);
-    }).forget();
+    })
+    .forget();
 
     let full_for_key = full_lyrics;
     let key_cb = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event: KeyboardEvent| {
-        if event.key() == "Escape" || event.key() == "Backspace" { full_for_key.set(false); }
+        if event.key() == "Escape" || event.key() == "Backspace" {
+            full_for_key.set(false);
+        }
     });
-    if let Some(window) = web_sys::window() { let _ = window.add_event_listener_with_callback("keydown", key_cb.as_ref().unchecked_ref()); }
+    if let Some(window) = web_sys::window() {
+        let _ = window.add_event_listener_with_callback("keydown", key_cb.as_ref().unchecked_ref());
+    }
     key_cb.forget();
 
     let open_mic = move |_| {
@@ -232,36 +271,70 @@ fn KaraokeConsole() -> impl IntoView {
 
     let toggle_record = move |_| {
         if recording.get() {
-            if let Some(player)=song_player() { let _=player.pause(); }
-            if let Err(e)=audio::stop_recording() { status.set(format!("停止录制失败：{e}")); } else { status.set("正在写入最后分片并保存…".into()); }
+            if let Some(player) = song_player() {
+                let _ = player.pause();
+            }
+            if let Err(e) = audio::stop_recording() {
+                status.set(format!("停止录制失败：{e}"));
+            } else {
+                status.set("正在写入最后分片并保存…".into());
+            }
             return;
         }
-        if !audio::is_open() { status.set("请先打开麦克风".into()); return; }
-        let Some(song)=current_song(catalog.get(), &selected.get()) else { status.set("请选择歌曲".into()); return; };
-        let m=mode.get();
-        if !song.tracks.contains_key(&m) { status.set("当前模式尚未提供音轨".into()); return; }
-        if let Some(player)=song_player() { player.set_current_time(0.0); let _=player.play(); }
+        if !audio::is_open() {
+            status.set("请先打开麦克风".into());
+            return;
+        }
+        let Some(song) = current_song(catalog.get(), &selected.get()) else {
+            status.set("请选择歌曲".into());
+            return;
+        };
+        let m = mode.get();
+        if !song.tracks.contains_key(&m) {
+            status.set("当前模式尚未提供音轨".into());
+            return;
+        }
+        if let Some(player) = song_player() {
+            player.set_current_time(0.0);
+            let _ = player.play();
+        }
         let done: Rc<dyn Fn(Result<(), String>)> = Rc::new(move |result| {
             recording.set(false);
-            match result { Ok(()) => status.set("K歌录音已保存 · 仅人声".into()), Err(e) => status.set(format!("K歌保存失败：{e}")) }
+            match result {
+                Ok(()) => status.set("K歌录音已保存 · 仅人声".into()),
+                Err(e) => status.set(format!("K歌保存失败：{e}")),
+            }
             refresh_karaoke_recordings(recordings);
         });
-        let spec=RecordingSpec {
-            start_url:"/singeros/api/karaoke/recordings/start".into(),
-            session_base:"/singeros/api/karaoke/recordings".into(),
-            start_body:json!({"song_id":song.id,"song_title":song.title,"mode":m}),
-            finalize_body:json!({"record_bus":"mic-only","record_gain":record_gain.get(),"song_gain":song_gain.get(),"aec":aec.get()}),
+        let spec = RecordingSpec {
+            start_url: "/singeros/api/karaoke/recordings/start".into(),
+            session_base: "/singeros/api/karaoke/recordings".into(),
+            start_body: json!({"song_id":song.id,"song_title":song.title,"mode":m}),
+            finalize_body: json!({"record_bus":"mic-only","record_gain":record_gain.get(),"song_gain":song_gain.get(),"aec":aec.get()}),
         };
         spawn_local(async move {
-            match audio::start_recording(spec,done).await {
-                Ok(()) => { recording.set(true); status.set(format!("录制中 · 仅人声 · {}",mode.get_untracked())); api::telemetry("K歌开始",json!({"recordBus":"mic-only"})); }
+            match audio::start_recording(spec, done).await {
+                Ok(()) => {
+                    recording.set(true);
+                    status.set(format!("录制中 · 仅人声 · {}", mode.get_untracked()));
+                    api::telemetry("K歌开始", json!({"recordBus":"mic-only"}));
+                }
                 Err(e) => status.set(format!("开始K歌失败：{e}")),
             }
         });
     };
 
-    let play_only = move |_| if let Some(player)=song_player() { let _=player.play(); };
-    let stop_on_end = move |_| if recording.get() { let _=audio::stop_recording(); status.set("歌曲结束，正在自动保存…".into()); };
+    let play_only = move |_| {
+        if let Some(player) = song_player() {
+            let _ = player.play();
+        }
+    };
+    let stop_on_end = move |_| {
+        if recording.get() {
+            let _ = audio::stop_recording();
+            status.set("歌曲结束，正在自动保存…".into());
+        }
+    };
 
     view! {
         <div class="shell">
@@ -298,34 +371,85 @@ fn KaraokeConsole() -> impl IntoView {
 
 fn refresh_devices(devices: RwSignal<Vec<DeviceOption>>, selected: RwSignal<String>) {
     spawn_local(async move {
-        if let Ok(list)=audio::enumerate_inputs().await {
-            if selected.get_untracked().is_empty() { if let Some(first)=list.first(){ selected.set(first.id.clone()); } }
+        if let Ok(list) = audio::enumerate_inputs().await {
+            if selected.get_untracked().is_empty() {
+                if let Some(first) = list.first() {
+                    selected.set(first.id.clone());
+                }
+            }
             devices.set(list);
         }
     });
 }
 
-fn refresh_general_recordings(target: RwSignal<Vec<GeneralRecording>>) { spawn_local(async move { if let Ok(v)=api::get_json("/singeros/api/recordings").await{target.set(v)} }); }
-fn refresh_karaoke_recordings(target: RwSignal<Vec<KaraokeRecording>>) { spawn_local(async move { if let Ok(v)=api::get_json("/singeros/api/karaoke/recordings").await{target.set(v)} }); }
-fn song_player() -> Option<HtmlAudioElement> { web_sys::window()?.document()?.get_element_by_id("song-player")?.dyn_into().ok() }
-fn current_song(catalog: Option<KaraokeCatalog>, id: &str) -> Option<KaraokeSong> { catalog?.songs.into_iter().find(|s| s.id == id) }
+fn refresh_general_recordings(target: RwSignal<Vec<GeneralRecording>>) {
+    spawn_local(async move {
+        if let Ok(v) = api::get_json("/singeros/api/recordings").await {
+            target.set(v)
+        }
+    });
+}
+fn refresh_karaoke_recordings(target: RwSignal<Vec<KaraokeRecording>>) {
+    spawn_local(async move {
+        if let Ok(v) = api::get_json("/singeros/api/karaoke/recordings").await {
+            target.set(v)
+        }
+    });
+}
+fn song_player() -> Option<HtmlAudioElement> {
+    web_sys::window()?
+        .document()?
+        .get_element_by_id("song-player")?
+        .dyn_into()
+        .ok()
+}
+fn current_song(catalog: Option<KaraokeCatalog>, id: &str) -> Option<KaraokeSong> {
+    catalog?.songs.into_iter().find(|s| s.id == id)
+}
 fn lyrics_for(song: &KaraokeSong, mode: &str) -> (Vec<KaraokeCue>, f64) {
-    let track=song.tracks.get(mode);
-    let lyrics=if !song.lyrics.is_empty(){song.lyrics.clone()}else{track.map(|t|t.lyrics.clone()).unwrap_or_default()};
-    let offset=track.map(|t|t.lyrics_offset).unwrap_or(0.0);
-    (lyrics,offset)
+    let track = song.tracks.get(mode);
+    let lyrics = if !song.lyrics.is_empty() {
+        song.lyrics.clone()
+    } else {
+        track.map(|t| t.lyrics.clone()).unwrap_or_default()
+    };
+    let offset = track.map(|t| t.lyrics_offset).unwrap_or(0.0);
+    (lyrics, offset)
 }
 fn lyric_text(catalog: Option<KaraokeCatalog>, id: &str, mode: &str, index: usize) -> String {
-    let Some(song)=current_song(catalog,id) else{return "—".into()};
-    lyrics_for(&song,mode).0.get(index).map(|c|c.text.clone()).unwrap_or_else(||"—".into())
+    let Some(song) = current_song(catalog, id) else {
+        return "—".into();
+    };
+    lyrics_for(&song, mode)
+        .0
+        .get(index)
+        .map(|c| c.text.clone())
+        .unwrap_or_else(|| "—".into())
 }
-fn render_lyrics(catalog: Option<KaraokeCatalog>, id: &str, mode: &str, current: RwSignal<usize>) -> impl IntoView {
-    let lyrics=current_song(catalog,id).map(|s|lyrics_for(&s,mode).0).unwrap_or_default();
-    lyrics.into_iter().enumerate().map(|(i,c)|view!{<div class="cue" class:active=move || current.get()==i>{c.text}</div>}).collect_view()
+fn render_lyrics(
+    catalog: Option<KaraokeCatalog>,
+    id: &str,
+    mode: &str,
+    current: RwSignal<usize>,
+) -> impl IntoView {
+    let lyrics = current_song(catalog, id)
+        .map(|s| lyrics_for(&s, mode).0)
+        .unwrap_or_default();
+    lyrics
+        .into_iter()
+        .enumerate()
+        .map(|(i, c)| view! {<div class="cue" class:active=move || current.get()==i>{c.text}</div>})
+        .collect_view()
 }
-fn render_albums(catalog: Option<KaraokeCatalog>, selected: RwSignal<String>, recording: RwSignal<bool>) -> impl IntoView {
-    let Some(c)=catalog else{return view!{<div class="sub">"歌库不可用"</div>}.into_any()};
-    let songs=c.songs.clone();
+fn render_albums(
+    catalog: Option<KaraokeCatalog>,
+    selected: RwSignal<String>,
+    recording: RwSignal<bool>,
+) -> impl IntoView {
+    let Some(c) = catalog else {
+        return view! {<div class="sub">"歌库不可用"</div>}.into_any();
+    };
+    let songs = c.songs.clone();
     c.albums.into_iter().map(move |album|{
         let album_songs=songs.iter().filter(|s|s.album==album.title).cloned().collect::<Vec<_>>();
         view!{<div class="album"><div class="album-head"><b>{album.title.clone()}</b><span>{format!("{} · {}",album.year,album.language)}</span></div><div class="songs">{album_songs.into_iter().map(|song|{let id=song.id.clone();let original=song.tracks.contains_key("original");let accompaniment=song.tracks.contains_key("accompaniment");view!{<button class="song" class:active=move || selected.get()==id disabled=move || recording.get() on:click=move |_| if !recording.get(){selected.set(song.id.clone())}>{song.title.clone()}<small>{format!("{} · 原唱{} · 伴奏{} · 歌词{}",song.language,if original{"✓"}else{"待补"},if accompaniment{"✓"}else{"待补"},if !song.lyrics.is_empty(){"✓"}else{"待校准"})}</small></button>}}).collect_view()}</div></div>}
