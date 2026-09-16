@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
+      - name: Install pinned production nightly
         run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rustfmt --component clippy --component rust-src --target wasm32-unknown-unknown
       - run: rustup show
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --exclude compiler-contracts --exclude portable-simd-dsp --exclude const-audio-layout --exclude audio-worklet-lab --all-targets -- -D warnings
-      - run: cargo test --workspace --exclude compiler-contracts --exclude portable-simd-dsp --exclude const-audio-layout --exclude audio-worklet-lab
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
       - run: cargo check -p singer-web --target wasm32-unknown-unknown
 
   compiler-lab:
@@ -21,10 +21,10 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
-        run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rust-src
+      - name: Install moving nightly
+        run: rustup toolchain install nightly --profile minimal --component rust-src
       - name: Negative bounds + Polonius-next
-        run: cargo test -p compiler-contracts --lib
+        run: cargo +nightly test --manifest-path labs/compiler-contracts/Cargo.toml --lib
         env:
           RUSTFLAGS: -Zinternal-testing-features -Zpolonius=next
 
@@ -33,27 +33,27 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
-        run: rustup toolchain install nightly-2026-09-13 --profile minimal
-      - run: cargo test -p portable-simd-dsp --lib
+      - name: Install moving nightly
+        run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly test --manifest-path labs/portable-simd-dsp/Cargo.toml --lib
 
   const-layout-lab:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
-        run: rustup toolchain install nightly-2026-09-13 --profile minimal
-      - run: cargo test -p const-audio-layout --lib
+      - name: Install moving nightly
+        run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly test --manifest-path labs/const-audio-layout/Cargo.toml --lib
 
   audio-worklet-lab:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
-        run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rust-src --target wasm32-unknown-unknown
+      - name: Install moving nightly
+        run: rustup toolchain install nightly --profile minimal --component rust-src --target wasm32-unknown-unknown
       - name: Compile CPAL AudioWorklet with Wasm atomics
-        run: cargo check -p audio-worklet-lab --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+        run: cargo +nightly check --manifest-path labs/audio-worklet/Cargo.toml --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
         env:
           RUSTFLAGS: -C target-feature=+atomics,+bulk-memory,+mutable-globals
