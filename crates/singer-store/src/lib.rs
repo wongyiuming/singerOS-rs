@@ -1,4 +1,4 @@
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, BufRead, BufReader, Write},
@@ -24,7 +24,11 @@ impl<E: Serialize> Wal<E> {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
         let path = path.as_ref().to_path_buf();
         let file = OpenOptions::new().create(true).append(true).open(&path)?;
-        Ok(Self { path, file, _event: PhantomData })
+        Ok(Self {
+            path,
+            file,
+            _event: PhantomData,
+        })
     }
 
     pub fn append(&mut self, event: &E) -> Result<(), StoreError> {
@@ -67,7 +71,11 @@ impl<E: DeserializeOwned> Wal<E> {
 pub fn write_snapshot<T: Serialize>(path: impl AsRef<Path>, value: &T) -> Result<(), StoreError> {
     let path = path.as_ref();
     let tmp = path.with_extension("tmp");
-    let mut file = OpenOptions::new().create(true).truncate(true).write(true).open(&tmp)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&tmp)?;
     serde_json::to_writer(&mut file, value)?;
     file.write_all(b"\n")?;
     file.sync_all()?;

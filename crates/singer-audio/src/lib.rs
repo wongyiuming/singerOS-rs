@@ -16,19 +16,31 @@ pub struct AudioGraph<Route, State> {
 
 impl AudioGraph<MicOnly, Idle> {
     pub fn microphone() -> Self {
-        Self { record_gain: 1.0, _route: PhantomData, _state: PhantomData }
+        Self {
+            record_gain: 1.0,
+            _route: PhantomData,
+            _state: PhantomData,
+        }
     }
 }
 
 impl AudioGraph<ProgramMix, Idle> {
     pub fn program_mix() -> Self {
-        Self { record_gain: 1.0, _route: PhantomData, _state: PhantomData }
+        Self {
+            record_gain: 1.0,
+            _route: PhantomData,
+            _state: PhantomData,
+        }
     }
 }
 
 impl<Route> AudioGraph<Route, Idle> {
     pub fn start(self) -> AudioGraph<Route, Running> {
-        AudioGraph { record_gain: self.record_gain, _route: PhantomData, _state: PhantomData }
+        AudioGraph {
+            record_gain: self.record_gain,
+            _route: PhantomData,
+            _state: PhantomData,
+        }
     }
 }
 
