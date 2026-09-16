@@ -28,8 +28,9 @@ jobs:
           )
           s = s.replace(
               'let blob = event.data();\n        if blob.size() == 0 {',
-              'let Some(blob) = event.data() else {\n            return;\n        };\n        if blob.size() == 0 {',
+              'let Some(blob) = event.data() else {\n            return;\n        };\n        if blob.size() == 0.0 {',
           )
+          s = s.replace('if blob.size() == 0 {', 'if blob.size() == 0.0 {')
           p.write_text(s)
 
           p = Path('crates/singer-web/src/lib.rs')
@@ -58,7 +59,7 @@ jobs:
             git config user.name github-actions[bot]
             git config user.email 41898282+github-actions[bot]@users.noreply.github.com
             git add crates
-            git commit -m "fix: resolve Rust WASM compile errors"
+            git commit -m "fix: finish Rust WASM compile fixes"
             git push origin HEAD:feat/production-parity
           fi
       - run: cargo fmt --all -- --check
