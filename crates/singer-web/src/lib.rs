@@ -346,7 +346,7 @@ fn KaraokeConsole() -> impl IntoView {
                         <div class="row"><button class:active=move || mode.get()=="original" on:click=move |_| if !recording.get(){mode.set("original".into())} disabled=move || recording.get()>"原唱"</button><button class:active=move || mode.get()=="accompaniment" on:click=move |_| if !recording.get(){mode.set("accompaniment".into())} disabled=move || recording.get()>"伴奏"</button><button on:click=play_only>"仅播放"</button><button on:click=move |_| { full_lyrics.set(true); api::telemetry("歌词全屏打开",json!({})); }>"歌词全屏"</button></div>
                         <audio id="song-player" class="player" controls preload="metadata" on:ended=stop_on_end></audio>
                         <div class="lyrics-stage"><div><div class="lyric-now">{move || lyric_text(catalog.get(),&selected.get(),&mode.get(),lyric_index.get())}</div><div class="lyric-next">{move || lyric_text(catalog.get(),&selected.get(),&mode.get(),lyric_index.get()+1)}</div></div></div>
-                        <div class="overview">{move || render_lyrics(catalog.get(), &selected.get(), &mode.get(), lyric_index)}</div>
+                        <div class="overview">{move || render_lyrics(catalog.get(), selected.get(), mode.get(), lyric_index)}</div>
                     </section>
                 </div>
                 <div class="stack">
@@ -364,7 +364,7 @@ fn KaraokeConsole() -> impl IntoView {
             </div>
         </div>
         <Show when=move || full_lyrics.get() fallback=|| ()>
-            <div class="full"><div class="full-head"><div><b>{move || current_song(catalog.get(),&selected.get()).map(|s|s.title).unwrap_or_default()}</b><div class="sub">"Esc / Backspace 返回"</div></div><button on:click=move |_| {full_lyrics.set(false);api::telemetry("歌词全屏关闭",json!({}));}>"返回"</button></div><div class="full-body">{move || render_lyrics(catalog.get(),&selected.get(),&mode.get(),lyric_index)}</div></div>
+            <div class="full"><div class="full-head"><div><b>{move || current_song(catalog.get(),&selected.get()).map(|s|s.title).unwrap_or_default()}</b><div class="sub">"Esc / Backspace 返回"</div></div><button on:click=move |_| {full_lyrics.set(false);api::telemetry("歌词全屏关闭",json!({}));}>"返回"</button></div><div class="full-body">{move || render_lyrics(catalog.get(),selected.get(),mode.get(),lyric_index)}</div></div>
         </Show>
     }
 }
@@ -417,7 +417,7 @@ fn lyrics_for(song: &KaraokeSong, mode: &str) -> (Vec<KaraokeCue>, f64) {
     (lyrics, offset)
 }
 fn lyric_text(catalog: Option<KaraokeCatalog>, id: &str, mode: &str, index: usize) -> String {
-    let Some(song) = current_song(catalog, id) else {
+    let Some(song) = current_song(catalog, &id) else {
         return "—".into();
     };
     lyrics_for(&song, mode)
@@ -428,12 +428,12 @@ fn lyric_text(catalog: Option<KaraokeCatalog>, id: &str, mode: &str, index: usiz
 }
 fn render_lyrics(
     catalog: Option<KaraokeCatalog>,
-    id: &str,
-    mode: &str,
+    id: String,
+    mode: String,
     current: RwSignal<usize>,
 ) -> impl IntoView {
-    let lyrics = current_song(catalog, id)
-        .map(|s| lyrics_for(&s, mode).0)
+    let lyrics = current_song(catalog, &id)
+        .map(|s| lyrics_for(&s, &mode).0)
         .unwrap_or_default();
     lyrics
         .into_iter()

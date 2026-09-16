@@ -290,7 +290,8 @@ pub fn set_afs_enabled(on: bool) {
 
 pub fn meter_percent() -> u16 {
     ENGINE.with(|slot| {
-        let Some(e) = slot.borrow().as_ref() else {
+        let binding = slot.borrow();
+        let Some(e) = binding.as_ref() else {
             return 0;
         };
         let mut samples = vec![128_u8; e.analyser.fft_size() as usize];
@@ -338,7 +339,9 @@ pub async fn start_recording(
     let data_seq = next_seq.clone();
     let data_error = upload_error.clone();
     let data_cb = Closure::<dyn FnMut(BlobEvent)>::new(move |event: BlobEvent| {
-        let blob = event.data();
+        let Some(blob) = event.data() else {
+            return;
+        };
         if blob.size() == 0 {
             return;
         }
