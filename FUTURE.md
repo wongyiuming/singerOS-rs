@@ -2,19 +2,19 @@
 
 ## Type-level audio safety
 
-Use typestate now and evaluate negative impls/bounds so `MicOnly` and `ProgramMix` are different types rather than flags. Recording APIs should accept only routes proven not to contain program audio.
+Use typestate now and evaluate negative impls/bounds so `MicOnly` and `ProgramMix` are different types rather than flags. `labs/const-route-kind` goes further by encoding the route as an ADT const parameter, so only the mic-only specialization exposes a recording API.
 
 ## AudioWorklet Rust/WASM
 
-Move realtime DSP off the UI thread into an AudioWorklet-backed Rust/WASM engine. CPAL's experimental `audioworklet` backend is compiled in `labs/audio-worklet`; microphone capture remains our own Rust browser capability until web input support is adequate.
+Move realtime DSP off the UI thread into an AudioWorklet-backed Rust/WASM engine. CPAL's `audioworklet` backend is compile-verified in `labs/audio-worklet` with Wasm atomics and a rebuilt standard library. Microphone capture remains our own Rust browser capability until web input support is adequate.
 
 ## Portable SIMD DSP
 
-`labs/portable-simd-dsp` exercises nightly `portable_simd` for fixed audio blocks. Scalar reference behavior remains the oracle.
+`labs/portable-simd-dsp` exercises nightly `portable_simd` for fixed audio blocks. Scalar behavior remains the oracle.
 
 ## Compiler-next contracts
 
-`labs/compiler-contracts` runs internal negative bounds under Polonius-next. `labs/const-audio-layout` follows the newer generic-const-args machinery so frame/channel topology can migrate into types if the design matures.
+`labs/compiler-contracts` verifies internal negative bounds under Polonius-next. `labs/const-audio-layout` tracks the MGCA/type-const parser transition as a probe: current nightly advertises the feature metadata while its exact parser build rejects the syntax, so this is explicitly recorded as upstream-blocked rather than worked around in production.
 
 ## Browser Component Model
 

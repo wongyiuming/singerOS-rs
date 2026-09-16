@@ -21,8 +21,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install moving nightly
-        run: rustup toolchain install nightly --profile minimal --component rust-src
+      - run: rustup toolchain install nightly --profile minimal --component rust-src
       - name: Negative bounds + Polonius-next
         run: cargo +nightly test --manifest-path labs/compiler-contracts/Cargo.toml --lib
         env:
@@ -33,8 +32,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install moving nightly
-        run: rustup toolchain install nightly --profile minimal
+      - run: rustup toolchain install nightly --profile minimal
       - run: cargo +nightly test --manifest-path labs/portable-simd-dsp/Cargo.toml --lib
 
   const-layout-lab:
@@ -42,17 +40,39 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install moving nightly
-        run: rustup toolchain install nightly --profile minimal
-      - run: cargo +nightly test --manifest-path labs/const-audio-layout/Cargo.toml --lib
+      - run: rustup toolchain install nightly --profile minimal
+      - name: Probe MGCA type-const parser/runtime support
+        shell: bash
+        run: |
+          set +e
+          cargo +nightly test --manifest-path labs/const-audio-layout/Cargo.toml --lib 2>mgca.err
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "MGCA type-const probe: supported" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cat mgca.err
+          if grep -Fq 'expected identifier, found keyword `const`' mgca.err; then
+            echo "MGCA type-const probe: upstream parser currently blocked" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$status"
+
+  const-route-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly test --manifest-path labs/const-route-kind/Cargo.toml --lib
 
   audio-worklet-lab:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install moving nightly
-        run: rustup toolchain install nightly --profile minimal --component rust-src --target wasm32-unknown-unknown
+      - run: rustup toolchain install nightly --profile minimal --component rust-src --target wasm32-unknown-unknown
       - name: Compile CPAL AudioWorklet with Wasm atomics
         run: cargo +nightly check --manifest-path labs/audio-worklet/Cargo.toml --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
         env:
