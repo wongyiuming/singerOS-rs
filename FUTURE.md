@@ -6,15 +6,15 @@ Use typestate now and evaluate negative impls/bounds so `MicOnly` and `ProgramMi
 
 ## AudioWorklet Rust/WASM
 
-Move realtime DSP off the UI thread into an AudioWorklet-backed Rust/WASM engine. Evaluate Wasm atomics and SharedArrayBuffer under strict COOP/COEP headers. Targets include mixer, monitor gain, limiter, EQ, feedback suppression, meter and later pitch/effects.
+Move realtime DSP off the UI thread into an AudioWorklet-backed Rust/WASM engine. CPAL's experimental `audioworklet` backend is compiled in `labs/audio-worklet`; microphone capture remains our own Rust browser capability until web input support is adequate.
 
 ## Portable SIMD DSP
 
-Evaluate nightly `portable_simd` for blocks of `f32`. Keep scalar reference implementations and differential tests.
+`labs/portable-simd-dsp` exercises nightly `portable_simd` for fixed audio blocks. Scalar reference behavior remains the oracle.
 
 ## Compiler-next contracts
 
-Exercise the next trait solver and Polonius-next. Track new generic-const-args work as a future way to encode channels, sample rate, block size and graph shape in types.
+`labs/compiler-contracts` runs internal negative bounds under Polonius-next. `labs/const-audio-layout` follows the newer generic-const-args machinery so frame/channel topology can migrate into types if the design matures.
 
 ## Browser Component Model
 

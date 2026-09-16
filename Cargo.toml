@@ -7,6 +7,9 @@ members = [
   "crates/singer-server",
   "crates/singer-store",
   "labs/compiler-contracts",
+  "labs/portable-simd-dsp",
+  "labs/const-audio-layout",
+  "labs/audio-worklet",
 ]
 
 [workspace.package]
