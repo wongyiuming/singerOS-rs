@@ -16,6 +16,27 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
+      - name: Apply branch cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          server = Path('crates/singer-server/src/main.rs')
+          text = server.read_text()
+          text = text.replace(
+              '        out.sort_by(|a, b| b.modified.cmp(&a.modified));',
+              '        out.sort_by_key(|a| std::cmp::Reverse(a.modified));',
+          )
+          text = text.replace(
+              '''                if let Ok(b) = fs::read(&p) {\n                    if let Ok(r) = serde_json::from_slice::<KaraokeRecording>(&b) {\n                        out.push(r);\n                    }\n                }''',
+              '''                if let Ok(b) = fs::read(&p)\n                    && let Ok(r) = serde_json::from_slice::<KaraokeRecording>(&b)\n                {\n                    out.push(r);\n                }''',
+          )
+          server.write_text(text)
+
+          manifest = Path('crates/singer-web/Cargo.toml')
+          text = manifest.read_text()
+          text = text.replace('[dependencies]\n', "[target.'cfg(target_arch = \\\"wasm32\\\")'.dependencies]\n", 1)
+          manifest.write_text(text)
       - name: Install rustfmt
         run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rustfmt
       - name: Format
