@@ -1,0 +1,143 @@
+name: rust-release-rn
+
+on:
+  push:
+    branches: [main, build/rust-production-rn-cd]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: singeros-rs-rn
+  cancel-in-progress: true
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Rust targets
+        run: |
+          rustup toolchain install nightly-2026-09-13 --profile minimal --target wasm32-unknown-unknown --target x86_64-unknown-linux-musl
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build Rust/WASM UI
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p singer-web --target wasm32-unknown-unknown
+          cargo install wasm-bindgen-cli --locked
+          mkdir -p dist/web
+          wasm-bindgen \
+            --target web \
+            --out-dir dist/web \
+            --out-name singer_web \
+            target/wasm32-unknown-unknown/release/singer_web.wasm
+      - name: Build static Linux server
+        env:
+          SINGER_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p singer-server --target x86_64-unknown-linux-musl
+          install -m 0755 target/x86_64-unknown-linux-musl/release/singer-server dist/singerOS
+          file dist/singerOS
+          sha256sum dist/singerOS dist/web/singer_web.js dist/web/singer_web_bg.wasm
+      - name: Upload exact release
+        uses: actions/upload-artifact@v4
+        with:
+          name: singeros-rs-${{ github.sha }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy-rn:
+    if: github.ref == 'refs/heads/main'
+    needs: build-release
+    runs-on: [self-hosted, Linux, X64, singeros-rn]
+    timeout-minutes: 10
+    steps:
+      - name: Guard RN boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname)" = "racknerd-2ee08ce"
+          test -d /opt/singeros
+          test "$(docker inspect -f '{{.Name}}' singeros_app)" = "/singeros_app"
+      - name: Download exact Rust release
+        uses: actions/download-artifact@v4
+        with:
+          name: singeros-rs-${{ github.sha }}
+          path: /tmp/singeros-rs-${{ github.sha }}
+      - name: Cut over container runtime to Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/tmp/singeros-rs-$GITHUB_SHA"
+          test -s "$ROOT/singerOS"
+          test -s "$ROOT/web/singer_web.js"
+          test -s "$ROOT/web/singer_web_bg.wasm"
+
+          if [ -f /opt/singeros/singerOS ]; then
+            cp -a /opt/singeros/singerOS /opt/singeros/singerOS.rollback
+          fi
+          install -m 0755 "$ROOT/singerOS" /opt/singeros/singerOS.new
+          mv -f /opt/singeros/singerOS.new /opt/singeros/singerOS
+
+          rm -rf /opt/singeros/web.new
+          install -d -m 0755 /opt/singeros/web.new
+          cp -a "$ROOT/web/." /opt/singeros/web.new/
+          rm -rf /opt/singeros/web.old
+          if [ -d /opt/singeros/web ]; then mv /opt/singeros/web /opt/singeros/web.old; fi
+          mv /opt/singeros/web.new /opt/singeros/web
+
+          docker exec singeros_app sh -c 'mkdir -p /opt/singeros/web'
+          docker cp /opt/singeros/web/. singeros_app:/opt/singeros/web/
+          docker restart singeros_app >/dev/null
+
+          for i in $(seq 1 20); do
+            BODY="$(docker exec singeros_app sh -c 'wget -qO- http://127.0.0.1:8080/singeros/healthz' || true)"
+            echo "$BODY"
+            if [[ "$BODY" == *'"runtime":"rust"'* && "$BODY" == *"$GITHUB_SHA"* ]]; then
+              rm -rf "$ROOT"
+              echo "RN_LOCAL_RUST_COMMIT=$GITHUB_SHA"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo 'Rust health failed; restoring previous binary/web' >&2
+          if [ -f /opt/singeros/singerOS.rollback ]; then
+            cp -af /opt/singeros/singerOS.rollback /opt/singeros/singerOS
+          fi
+          if [ -d /opt/singeros/web.old ]; then
+            rm -rf /opt/singeros/web
+            mv /opt/singeros/web.old /opt/singeros/web
+          fi
+          docker restart singeros_app >/dev/null || true
+          exit 1
+
+  verify-rn:
+    if: github.ref == 'refs/heads/main'
+    needs: deploy-rn
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify public Rust runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            BODY="$(curl -fsS --connect-timeout 5 --max-time 8 https://www4399.sbs:18443/singeros/healthz || true)"
+            echo "$BODY"
+            if [[ "$BODY" == *'"runtime":"rust"'* && "$BODY" == *"$GITHUB_SHA"* ]]; then
+              CAP="$(curl -fsS --connect-timeout 5 --max-time 8 https://www4399.sbs:18443/singeros/api/capabilities)"
+              [[ "$CAP" == *'"handwritten_business_js":0'* ]]
+              curl -fsS --connect-timeout 5 --max-time 8 https://www4399.sbs:18443/singeros/app/singer_web_bg.wasm -o /tmp/singer_web_bg.wasm
+              test -s /tmp/singer_web_bg.wasm
+              echo "RN_PUBLIC_RUST_COMMIT=$GITHUB_SHA"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "RN public endpoint did not switch to Rust commit $GITHUB_SHA" >&2
+          exit 1
