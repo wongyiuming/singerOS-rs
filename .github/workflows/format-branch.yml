@@ -35,7 +35,7 @@ jobs:
 
           manifest = Path('crates/singer-web/Cargo.toml')
           text = manifest.read_text()
-          text = text.replace('[dependencies]\n', "[target.'cfg(target_arch = \\\"wasm32\\\")'.dependencies]\n", 1)
+          text = text.replace('[dependencies]\n', "[target.'cfg(target_arch = \"wasm32\")'.dependencies]\n", 1)
           manifest.write_text(text)
       - name: Install rustfmt
         run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rustfmt
