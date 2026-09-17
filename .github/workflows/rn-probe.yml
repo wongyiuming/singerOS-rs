@@ -1,0 +1,33 @@
+name: rn-probe
+
+on:
+  push:
+    branches: [build/rust-production-rn-cd]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: [self-hosted, Linux, X64, singeros-rn]
+    timeout-minutes: 5
+    steps:
+      - name: Inspect RN SingerOS runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HOST=$(hostname)"
+          echo "KERNEL=$(uname -srmo)"
+          echo "--- /opt/singeros ---"
+          ls -la /opt/singeros || true
+          echo "--- processes ---"
+          ps -eo pid,ppid,user,cmd | grep -E '[s]ingerOS|[n]ginx|[d]ocker' || true
+          echo "--- docker ---"
+          docker ps --format '{{.Names}}|{{.Image}}|{{.Ports}}' || true
+          docker inspect singeros_app --format '{{json .Mounts}}' || true
+          docker inspect singeros_app --format '{{json .Config.Cmd}} {{json .Config.Entrypoint}} {{json .Config.Env}}' || true
+          echo "--- listeners ---"
+          ss -lntp || true
+          echo "--- candidate TLS files ---"
+          find /opt/singeros /etc/letsencrypt /etc/nginx -maxdepth 4 -type f \( -name '*.pem' -o -name '*.crt' -o -name '*.key' -o -name '*.conf' \) -print 2>/dev/null | head -n 120 || true
+          echo "--- systemd singer units ---"
+          systemctl list-unit-files --type=service | grep -i singer || true
+          systemctl status singeros.service --no-pager || true
