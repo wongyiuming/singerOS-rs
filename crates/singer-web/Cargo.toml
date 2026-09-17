@@ -14,8 +14,6 @@ js-sys = "0.3"
 gloo-net = "0.6"
 serde.workspace = true
 serde_json.workspace = true
-singer-core = { path = "../singer-core" }
-singer-audio = { path = "../singer-audio" }
 web-sys = { version = "0.3", features = [
   "Window", "Navigator", "MediaDevices", "MediaStream", "MediaStreamConstraints",
   "AudioContext", "GainNode", "DynamicsCompressorNode", "MediaRecorder",
