@@ -209,15 +209,13 @@ impl RecordingStore {
         if !safe_id(id) {
             return None;
         }
-        fs::read_dir(&self.dir)?
-            .flatten()
-            .map(|e| e.path())
-            .find(|p| {
-                p.is_file()
-                    && p.file_stem().and_then(|s| s.to_str()) == Some(id)
-                    && p.extension().and_then(|s| s.to_str()) != Some("json")
-                    && p.extension().and_then(|s| s.to_str()) != Some("part")
-            })
+        let entries = fs::read_dir(&self.dir).ok()?;
+        entries.flatten().map(|e| e.path()).find(|p| {
+            p.is_file()
+                && p.file_stem().and_then(|s| s.to_str()) == Some(id)
+                && p.extension().and_then(|s| s.to_str()) != Some("json")
+                && p.extension().and_then(|s| s.to_str()) != Some("part")
+        })
     }
 
     fn delete(&self, id: &str) {
