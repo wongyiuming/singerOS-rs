@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
+      - name: Install pinned production nightly
         run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rustfmt --component clippy --component rust-src --target wasm32-unknown-unknown
       - run: rustup show
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --exclude compiler-contracts --all-targets -- -D warnings
-      - run: cargo test --workspace --exclude compiler-contracts
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
       - run: cargo check -p singer-web --target wasm32-unknown-unknown
 
   compiler-lab:
@@ -21,10 +21,59 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
-      - name: Install pinned nightly
-        run: rustup toolchain install nightly-2026-09-13 --profile minimal --component rust-src
-      - run: rustup show
+      - run: rustup toolchain install nightly --profile minimal --component rust-src
       - name: Negative bounds + Polonius-next
-        run: cargo test -p compiler-contracts --lib
+        run: cargo +nightly test --manifest-path labs/compiler-contracts/Cargo.toml --lib
         env:
           RUSTFLAGS: -Zinternal-testing-features -Zpolonius=next
+
+  simd-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly test --manifest-path labs/portable-simd-dsp/Cargo.toml --lib
+
+  const-layout-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install nightly --profile minimal
+      - name: Probe MGCA type-const parser/runtime support
+        shell: bash
+        run: |
+          set +e
+          cargo +nightly test --manifest-path labs/const-audio-layout/Cargo.toml --lib 2>mgca.err
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "MGCA type-const probe: supported" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cat mgca.err
+          if grep -Fq 'expected identifier, found keyword `const`' mgca.err; then
+            echo "MGCA type-const probe: upstream parser currently blocked" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$status"
+
+  const-route-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly test --manifest-path labs/const-route-kind/Cargo.toml --lib
+
+  audio-worklet-lab:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install nightly --profile minimal --component rust-src --target wasm32-unknown-unknown
+      - name: Compile CPAL AudioWorklet with Wasm atomics
+        run: cargo +nightly check --manifest-path labs/audio-worklet/Cargo.toml --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+        env:
+          RUSTFLAGS: -C target-feature=+atomics,+bulk-memory,+mutable-globals

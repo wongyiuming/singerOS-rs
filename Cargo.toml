@@ -6,7 +6,13 @@ members = [
   "crates/singer-web",
   "crates/singer-server",
   "crates/singer-store",
+]
+exclude = [
   "labs/compiler-contracts",
+  "labs/portable-simd-dsp",
+  "labs/const-audio-layout",
+  "labs/const-route-kind",
+  "labs/audio-worklet",
 ]
 
 [workspace.package]

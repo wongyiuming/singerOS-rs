@@ -1,5 +1,5 @@
 [package]
-name = "compiler-contracts"
+name = "const-route-kind"
 version = "0.0.0"
 edition = "2024"
 publish = false
