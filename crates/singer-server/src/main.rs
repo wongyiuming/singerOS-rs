@@ -201,7 +201,7 @@ impl RecordingStore {
                 meta: sidecar,
             });
         }
-        out.sort_by(|a, b| b.modified.cmp(&a.modified));
+        out.sort_by_key(|a| std::cmp::Reverse(a.modified));
         out
     }
 
@@ -524,10 +524,10 @@ impl KaraokeRecordingStore {
                 if p.extension().and_then(|s| s.to_str()) != Some("json") {
                     continue;
                 }
-                if let Ok(b) = fs::read(&p) {
-                    if let Ok(r) = serde_json::from_slice::<KaraokeRecording>(&b) {
-                        out.push(r);
-                    }
+                if let Ok(b) = fs::read(&p)
+                    && let Ok(r) = serde_json::from_slice::<KaraokeRecording>(&b)
+                {
+                    out.push(r);
                 }
             }
         }
