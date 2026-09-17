@@ -18,6 +18,6 @@ singer-core = { path = "../singer-core" }
 singer-audio = { path = "../singer-audio" }
 web-sys = { version = "0.3", features = [
   "Window", "Navigator", "MediaDevices", "MediaStream", "MediaStreamConstraints",
-  "AudioContext", "GainNode", "DynamicsCompressorNode", "MediaRecorder", "MediaRecorderState",
+  "AudioContext", "GainNode", "DynamicsCompressorNode", "MediaRecorder",
   "Blob", "BlobEvent", "Event", "HtmlAudioElement", "HtmlMediaElement", "Url"
 ] }
