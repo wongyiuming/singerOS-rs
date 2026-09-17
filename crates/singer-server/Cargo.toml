@@ -1,6 +1,6 @@
 [package]
 name = "singer-server"
-version = "0.1.0"
+version = "0.2.0"
 edition.workspace = true
 
 [dependencies]
@@ -9,4 +9,7 @@ axum-server = { version = "0.8", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["rt", "macros", "net", "sync", "time", "fs"] }
 serde.workspace = true
 serde_json.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+chrono-tz = "0.10"
 singer-core = { path = "../singer-core" }
+singer-store = { path = "../singer-store" }
