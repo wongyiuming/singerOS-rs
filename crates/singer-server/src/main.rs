@@ -1,16 +1,16 @@
 use axum::{
+    Json, Router,
     body::{Body, Bytes},
     extract::{Path as AxumPath, Query, State},
-    http::{header, HeaderValue, Request, StatusCode},
+    http::{HeaderValue, Request, StatusCode, header},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{delete, get, post},
-    Json, Router,
 };
 use chrono::{DateTime, Utc};
 use chrono_tz::Asia::Shanghai;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::{
     collections::HashMap,
     fs::{self, OpenOptions},
@@ -107,14 +107,9 @@ impl RecordingStore {
             .sessions
             .lock()
             .map_err(|_| "recording lock poisoned")?;
-        let session = sessions
-            .get_mut(id)
-            .ok_or("recording session not active")?;
+        let session = sessions.get_mut(id).ok_or("recording session not active")?;
         if seq != session.view.seq {
-            return Err(format!(
-                "sequence mismatch: expected {}",
-                session.view.seq
-            ));
+            return Err(format!("sequence mismatch: expected {}", session.view.seq));
         }
         let mut file = OpenOptions::new()
             .append(true)
@@ -134,9 +129,7 @@ impl RecordingStore {
             .sessions
             .lock()
             .map_err(|_| "recording lock poisoned")?;
-        let session = sessions
-            .remove(id)
-            .ok_or("recording session not active")?;
+        let session = sessions.remove(id).ok_or("recording session not active")?;
         let ext = ext_for_mime(&session.view.mime);
         let final_name = format!("{id}{ext}");
         fs::rename(
@@ -456,13 +449,8 @@ impl KaraokeRecordingStore {
         if body.len() as u64 > MAX_CHUNK_BYTES {
             return Err("chunk exceeds 16 MiB".into());
         }
-        let mut sessions = self
-            .sessions
-            .lock()
-            .map_err(|_| "karaoke lock poisoned")?;
-        let s = sessions
-            .get_mut(id)
-            .ok_or("recording session not active")?;
+        let mut sessions = self.sessions.lock().map_err(|_| "karaoke lock poisoned")?;
+        let s = sessions.get_mut(id).ok_or("recording session not active")?;
         if s.seq != seq {
             return Err(format!("sequence mismatch: expected {}", s.seq));
         }
@@ -477,13 +465,8 @@ impl KaraokeRecordingStore {
     }
 
     fn finalize(&self, id: &str, meta: Value) -> Result<KaraokeRecording, String> {
-        let mut sessions = self
-            .sessions
-            .lock()
-            .map_err(|_| "karaoke lock poisoned")?;
-        let s = sessions
-            .remove(id)
-            .ok_or("recording session not active")?;
+        let mut sessions = self.sessions.lock().map_err(|_| "karaoke lock poisoned")?;
+        let s = sessions.remove(id).ok_or("recording session not active")?;
         let created = Utc::now();
         let mut duration = meta
             .get("duration_seconds")
@@ -558,10 +541,8 @@ impl KaraokeRecordingStore {
         if !safe_id(id) {
             return None;
         }
-        let rec: KaraokeRecording = serde_json::from_slice(
-            &fs::read(self.dir.join(format!("{id}.json"))).ok()?,
-        )
-        .ok()?;
+        let rec: KaraokeRecording =
+            serde_json::from_slice(&fs::read(self.dir.join(format!("{id}.json"))).ok()?).ok()?;
         let p = self.dir.join(rec.file);
         p.is_file().then_some(p)
     }
@@ -590,8 +571,7 @@ async fn main() {
         .parse()
         .expect("valid SINGER_ADDR");
     let data_dir = PathBuf::from(
-        std::env::var("SINGER_DATA")
-            .unwrap_or_else(|_| "/opt/singeros/data/recordings".into()),
+        std::env::var("SINGER_DATA").unwrap_or_else(|_| "/opt/singeros/data/recordings".into()),
     );
     let web_root = PathBuf::from(
         std::env::var("SINGER_WEB_ROOT").unwrap_or_else(|_| "/opt/singeros/web".into()),
@@ -623,23 +603,14 @@ async fn main() {
         .route("/singeros/api/capabilities", get(capabilities))
         .route("/singeros/api/client-log", post(client_log))
         .route("/singeros/api/recordings/start", post(recording_start))
-        .route(
-            "/singeros/api/recordings/{id}/chunk",
-            post(recording_chunk),
-        )
+        .route("/singeros/api/recordings/{id}/chunk", post(recording_chunk))
         .route(
             "/singeros/api/recordings/{id}/finalize",
             post(recording_finalize),
         )
         .route("/singeros/api/recordings", get(recording_list))
-        .route(
-            "/singeros/api/recordings/{id}/audio",
-            get(recording_audio),
-        )
-        .route(
-            "/singeros/api/recordings/{id}",
-            delete(recording_delete),
-        )
+        .route("/singeros/api/recordings/{id}/audio", get(recording_audio))
+        .route("/singeros/api/recordings/{id}", delete(recording_delete))
         .route("/singeros/api/karaoke/catalog", get(karaoke_catalog))
         .route(
             "/singeros/api/karaoke/assets/{song}/{mode}",
@@ -668,10 +639,7 @@ async fn main() {
         .layer(middleware::from_fn(secure_headers))
         .with_state(state);
 
-    if let (Ok(cert), Ok(key)) = (
-        std::env::var("SINGER_CERT"),
-        std::env::var("SINGER_KEY"),
-    ) {
+    if let (Ok(cert), Ok(key)) = (std::env::var("SINGER_CERT"), std::env::var("SINGER_KEY")) {
         let tls = axum_server::tls_rustls::RustlsConfig::from_pem_file(cert, key)
             .await
             .expect("load TLS material");
@@ -688,9 +656,7 @@ async fn main() {
             "{APP_NAME} HTTP {addr} commit={} (set SINGER_CERT/SINGER_KEY for direct TLS)",
             build_commit()
         );
-        axum::serve(listener, app)
-            .await
-            .expect("serve SingerOS");
+        axum::serve(listener, app).await.expect("serve SingerOS");
     }
 }
 
@@ -710,10 +676,7 @@ async fn secure_headers(req: Request<Body>, next: Next) -> Response {
         "x-content-type-options",
         HeaderValue::from_static("nosniff"),
     );
-    h.insert(
-        "referrer-policy",
-        HeaderValue::from_static("no-referrer"),
-    );
+    h.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
     h.insert(
         "cross-origin-opener-policy",
         HeaderValue::from_static("same-origin"),
@@ -743,10 +706,7 @@ async fn capabilities() -> Json<Value> {
     }))
 }
 
-async fn web_asset(
-    State(state): State<AppState>,
-    AxumPath(path): AxumPath<String>,
-) -> Response {
+async fn web_asset(State(state): State<AppState>, AxumPath(path): AxumPath<String>) -> Response {
     if !safe_relative_path(&path) {
         return StatusCode::BAD_REQUEST.into_response();
     }
@@ -897,9 +857,7 @@ async fn karaoke_recording_finalize(
     }
 }
 
-async fn karaoke_recording_list(
-    State(state): State<AppState>,
-) -> Json<Vec<KaraokeRecording>> {
+async fn karaoke_recording_list(State(state): State<AppState>) -> Json<Vec<KaraokeRecording>> {
     Json(state.karaoke_recordings.list())
 }
 
@@ -942,16 +900,14 @@ fn new_id() -> String {
 
 fn safe_id(v: &str) -> bool {
     (8..=96).contains(&v.len())
-        && v
-            .bytes()
+        && v.bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 fn safe_component(v: &str) -> bool {
     !v.is_empty()
         && v.len() <= 128
-        && v
-            .bytes()
+        && v.bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
         && !v.contains("..")
 }
@@ -959,9 +915,7 @@ fn safe_component(v: &str) -> bool {
 fn safe_relative_path(v: &str) -> bool {
     !v.is_empty()
         && !v.starts_with('/')
-        && !v
-            .split('/')
-            .any(|p| p.is_empty() || p == "." || p == "..")
+        && !v.split('/').any(|p| p.is_empty() || p == "." || p == "..")
 }
 
 fn safe_song_filename(v: &str) -> String {
@@ -973,9 +927,7 @@ fn safe_song_filename(v: &str) -> String {
             out.push(c);
         }
     }
-    let out = out
-        .trim_matches(|c| c == '.' || c == ' ')
-        .to_string();
+    let out = out.trim_matches(|c| c == '.' || c == ' ').to_string();
     if out.is_empty() {
         "karaoke".into()
     } else {
