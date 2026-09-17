@@ -1,8 +1,6 @@
 name: rn-probe
 
 on:
-  push:
-    branches: [build/rust-production-rn-cd]
   workflow_dispatch:
 
 jobs:
