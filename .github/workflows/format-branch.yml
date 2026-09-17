@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   rustfmt:
-    if: ${{ !contains(github.event.head_commit.message, 'style: rustfmt') }}
+    if: "${{ !contains(github.event.head_commit.message, 'style: rustfmt') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
