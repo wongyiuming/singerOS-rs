@@ -517,7 +517,7 @@ impl KaraokeRecordingStore {
     }
 
     fn list(&self) -> Vec<KaraokeRecording> {
-        let mut out = Vec::new();
+        let mut out: Vec<KaraokeRecording> = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.dir) {
             for e in entries.flatten() {
                 let p = e.path();
@@ -525,7 +525,7 @@ impl KaraokeRecordingStore {
                     continue;
                 }
                 if let Ok(b) = fs::read(&p) {
-                    if let Ok(r) = serde_json::from_slice(&b) {
+                    if let Ok(r) = serde_json::from_slice::<KaraokeRecording>(&b) {
                         out.push(r);
                     }
                 }
